@@ -1,6 +1,6 @@
 import type { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { getSuiClient } from "@/lib/sui/client";
+import { getSuiClient } from "../sui/client";
 
 /**
  * Execute a transaction with a standard keypair (no zkLogin, no sponsor).

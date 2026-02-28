@@ -1,15 +1,12 @@
 /**
- * Browser-safe PTB builders for owner and basic agent operations.
- * These can be safely imported from client-side components ("use client").
- *
- * For Cetus/Stablelayer agent operations (server-only), see ptb-agent.ts.
+ * PTB builders for owner and agent vault operations.
  */
 import { Transaction } from "@mysten/sui/transactions";
 import {
   PACKAGE_ID,
   MODULE_NAME,
   CLOCK_OBJECT_ID,
-} from "@/lib/constants";
+} from "../constants";
 
 // ============================================================
 // Owner Operations
@@ -30,9 +27,9 @@ export function buildCreateVault(params: {
 }): Transaction {
   const tx = new Transaction();
 
-  // Split the exact deposit amount
-  // useGasCoin: split from gas coin (non-sponsored, avoids coin conflict)
-  // otherwise: split from specific coin object (sponsored mode)
+  if (!params.useGasCoin && !params.coinObjectId) {
+    throw new Error("coinObjectId is required when useGasCoin is false");
+  }
   const source = params.useGasCoin ? tx.gas : tx.object(params.coinObjectId!);
   const [depositCoin] = tx.splitCoins(source, [
     tx.pure.u64(params.depositAmount),

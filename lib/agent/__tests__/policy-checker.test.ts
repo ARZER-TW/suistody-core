@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { checkPolicy } from "../policy-checker";
-import type { VaultData } from "@/lib/vault/types";
+import type { VaultData } from "../../vault/types";
 
 function makeVault(overrides: Partial<VaultData> = {}): VaultData {
   return {
@@ -241,5 +241,66 @@ describe("checkPolicy", () => {
 
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain("expired");
+  });
+
+  it("allows amount exactly equal to maxPerTx", () => {
+    const vault = makeVault();
+    const result = checkPolicy({
+      vault,
+      amount: 1_000_000_000n, // exactly maxPerTx
+      actionType: 0,
+      nowMs: Date.now(),
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it("allows amount exactly equal to remaining budget", () => {
+    const vault = makeVault({
+      totalSpent: 4_000_000_000n, // 4 SUI spent, 1 SUI remaining = maxPerTx
+    });
+
+    const result = checkPolicy({
+      vault,
+      amount: 1_000_000_000n, // exactly remaining budget
+      actionType: 0,
+      nowMs: Date.now(),
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it("allows amount exactly equal to vault balance", () => {
+    const vault = makeVault({
+      balance: 1_000_000_000n, // exactly 1 SUI
+    });
+
+    const result = checkPolicy({
+      vault,
+      amount: 1_000_000_000n, // exactly balance
+      actionType: 0,
+      nowMs: Date.now(),
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it("rejects when allowedActions is empty", () => {
+    const vault = makeVault({
+      policy: {
+        ...makeVault().policy,
+        allowedActions: [],
+      },
+    });
+
+    const result = checkPolicy({
+      vault,
+      amount: 100_000_000n,
+      actionType: 0,
+      nowMs: Date.now(),
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("not whitelisted");
   });
 });

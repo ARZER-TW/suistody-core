@@ -29,10 +29,10 @@ export interface OwnerCapData {
 
 export interface VaultEvent {
   txDigest: string;
-  amount: number;
+  amount: bigint;
   actionType: number;
-  totalSpent: number;
-  remainingBudget: number;
+  totalSpent: bigint;
+  remainingBudget: bigint;
   txCount: number;
   timestamp: number;
 }

@@ -1,4 +1,4 @@
-import type { VaultData } from "@/lib/vault/types";
+import type { VaultData } from "../vault/types";
 
 export interface PolicyCheckResult {
   allowed: boolean;
@@ -7,12 +7,16 @@ export interface PolicyCheckResult {
 
 /**
  * Pre-check an agent action against vault policy (off-chain).
- * This avoids wasting gas on transactions that will fail on-chain.
+ * This is a gas-saving optimization only -- the Move contract performs
+ * authoritative enforcement on-chain. Do NOT rely on this as a security boundary.
+ *
+ * IMPORTANT: `nowMs` is caller-supplied. The on-chain contract uses its own clock.
+ * Vault data may also be stale (fetched at an earlier time). Always submit the
+ * transaction to the chain for final enforcement.
  *
  * When `amount` is provided, withdrawal-related checks are enforced
  * (per-tx limit, remaining budget, vault balance).
  * When `amount` is omitted, only expiry, cooldown, and action whitelist are checked.
- * This supports actions like stable_burn/stable_claim that don't withdraw from the vault.
  */
 export function checkPolicy(params: {
   vault: VaultData;

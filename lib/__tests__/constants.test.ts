@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { suiToMist, mistToSui } from "../constants";
+import { suiToMist, mistToSui, getUsdcType, SUI_NETWORK } from "../constants";
 
 describe("suiToMist", () => {
   it("converts 1 SUI to 1_000_000_000 MIST", () => {
@@ -25,8 +25,11 @@ describe("suiToMist", () => {
   });
 
   it("handles negative values", () => {
-    // Math.floor(-0.5 * 1e9) = -500_000_000
     expect(suiToMist(-1)).toBe(-1_000_000_000n);
+  });
+
+  it("converts 0.1 SUI without floating-point error", () => {
+    expect(suiToMist(0.1)).toBe(100_000_000n);
   });
 });
 
@@ -52,5 +55,19 @@ describe("mistToSui", () => {
 
   it("handles 1 MIST (smallest unit)", () => {
     expect(mistToSui(1n)).toBe(1e-9);
+  });
+});
+
+describe("getUsdcType", () => {
+  it("returns a USDC type string for current network", () => {
+    const usdcType = getUsdcType();
+    expect(usdcType).toContain("::usdc::USDC");
+  });
+
+  it("returns testnet USDC type when network is testnet", () => {
+    // SUI_NETWORK is set to testnet in vitest.config.ts
+    expect(SUI_NETWORK).toBe("testnet");
+    const usdcType = getUsdcType();
+    expect(usdcType).toContain("0x14a71d857b34677a7d57e0feb303df1adb515a37780645ab763d42ce8d1a5e48");
   });
 });

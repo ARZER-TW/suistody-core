@@ -1,5 +1,5 @@
-import { getSuiClient } from "@/lib/sui/client";
-import { PACKAGE_ID, MODULE_NAME } from "@/lib/constants";
+import { getSuiClient } from "../sui/client";
+import { PACKAGE_ID, MODULE_NAME } from "../constants";
 import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent } from "./types";
 
 const VAULT_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::Vault`;
@@ -207,10 +207,10 @@ export async function getVaultEvents(vaultId: string): Promise<VaultEvent[]> {
       const p = e.parsedJson as Record<string, unknown>;
       return {
         txDigest: e.id.txDigest,
-        amount: Number(p.amount),
+        amount: BigInt(String(p.amount ?? 0)),
         actionType: Number(p.action_type),
-        totalSpent: Number(p.total_spent),
-        remainingBudget: Number(p.remaining_budget),
+        totalSpent: BigInt(String(p.total_spent ?? 0)),
+        remainingBudget: BigInt(String(p.remaining_budget ?? 0)),
         txCount: Number(p.tx_count),
         timestamp: Number(p.timestamp),
       };

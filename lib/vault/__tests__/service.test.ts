@@ -1,21 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock SuiClient before importing service
-vi.mock("@/lib/sui/client", () => ({
+vi.mock("../../sui/client", () => ({
   getSuiClient: vi.fn(),
 }));
 
 // We test the internal helpers by importing them indirectly through the module.
 // Since unwrapFields and extractFields are not exported, we re-implement the
 // same logic in tests to validate the parsing behavior via getVault / getOwnedVaults.
-import { getVault, getOwnerCaps, getAgentCaps, getOwnedVaults } from "../service";
-import { getSuiClient } from "@/lib/sui/client";
+import { getVault, getOwnerCaps, getAgentCaps, getOwnedVaults, getVaultEvents } from "../service";
+import { getSuiClient } from "../../sui/client";
 
 function makeMockClient(overrides: Record<string, unknown> = {}) {
   return {
     getObject: vi.fn(),
     getOwnedObjects: vi.fn(),
     multiGetObjects: vi.fn(),
+    queryEvents: vi.fn(),
     ...overrides,
   };
 }
@@ -390,5 +391,123 @@ describe("getOwnedVaults", () => {
 
     const vaults = await getOwnedVaults("0xowner");
     expect(vaults).toEqual([]);
+  });
+});
+
+describe("getVaultEvents", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns filtered events matching the vault_id", async () => {
+    const mockClient = makeMockClient({
+      queryEvents: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: { txDigest: "tx1" },
+            parsedJson: {
+              vault_id: "0xvault_target",
+              amount: "500000000",
+              action_type: "0",
+              total_spent: "500000000",
+              remaining_budget: "4500000000",
+              tx_count: "1",
+              timestamp: "1700000000000",
+            },
+          },
+          {
+            id: { txDigest: "tx2" },
+            parsedJson: {
+              vault_id: "0xother_vault",
+              amount: "100000000",
+              action_type: "1",
+              total_spent: "100000000",
+              remaining_budget: "900000000",
+              tx_count: "1",
+              timestamp: "1700000001000",
+            },
+          },
+        ],
+      }),
+    });
+    vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
+
+    const events = await getVaultEvents("0xvault_target");
+    expect(events).toHaveLength(1);
+    expect(events[0].txDigest).toBe("tx1");
+    expect(events[0].amount).toBe(500_000_000n);
+    expect(events[0].totalSpent).toBe(500_000_000n);
+    expect(events[0].remainingBudget).toBe(4_500_000_000n);
+    expect(events[0].txCount).toBe(1);
+    expect(events[0].timestamp).toBe(1700000000000);
+  });
+
+  it("returns empty array when no matching events", async () => {
+    const mockClient = makeMockClient({
+      queryEvents: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: { txDigest: "tx1" },
+            parsedJson: {
+              vault_id: "0xother",
+              amount: "100",
+              action_type: "0",
+              total_spent: "100",
+              remaining_budget: "900",
+              tx_count: "1",
+              timestamp: "1000",
+            },
+          },
+        ],
+      }),
+    });
+    vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
+
+    const events = await getVaultEvents("0xno_match");
+    expect(events).toEqual([]);
+  });
+
+  it("returns empty array when queryEvents returns no data", async () => {
+    const mockClient = makeMockClient({
+      queryEvents: vi.fn().mockResolvedValue({ data: [] }),
+    });
+    vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
+
+    const events = await getVaultEvents("0xvault");
+    expect(events).toEqual([]);
+  });
+
+  it("maps parsedJson fields correctly to VaultEvent", async () => {
+    const mockClient = makeMockClient({
+      queryEvents: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: { txDigest: "digest_abc" },
+            parsedJson: {
+              vault_id: "0xmy_vault",
+              amount: "1000000000",
+              action_type: "2",
+              total_spent: "3000000000",
+              remaining_budget: "2000000000",
+              tx_count: "5",
+              timestamp: "1700001234567",
+            },
+          },
+        ],
+      }),
+    });
+    vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
+
+    const events = await getVaultEvents("0xmy_vault");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      txDigest: "digest_abc",
+      amount: 1_000_000_000n,
+      actionType: 2,
+      totalSpent: 3_000_000_000n,
+      remainingBudget: 2_000_000_000n,
+      txCount: 5,
+      timestamp: 1700001234567,
+    });
   });
 });
