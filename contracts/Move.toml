@@ -1,0 +1,8 @@
+[package]
+name = "agent_vault"
+edition = "2024.beta"
+
+[dependencies]
+
+[addresses]
+agent_vault = "0x0"
