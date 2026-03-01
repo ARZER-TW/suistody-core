@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { suiToMist, mistToSui, getUsdcType, SUI_NETWORK } from "../constants";
+import { suiToMist, mistToSui, getUsdcType, SUI_NETWORK } from "../constants.js";
 
 describe("suiToMist", () => {
   it("converts 1 SUI to 1_000_000_000 MIST", () => {

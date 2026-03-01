@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../../sui/client", () => ({
+vi.mock("../../sui/client.js", () => ({
   getSuiClient: vi.fn(),
 }));
 
@@ -25,8 +25,8 @@ vi.mock("@mysten/sui/keypairs/ed25519", () => {
   };
 });
 
-import { executeAgentTransaction, executeSponsoredAgentTransaction } from "../sponsored-tx";
-import { getSuiClient } from "../../sui/client";
+import { executeAgentTransaction, executeSponsoredAgentTransaction } from "../sponsored-tx.js";
+import { getSuiClient } from "../../sui/client.js";
 
 function makeMockClient(overrides: Record<string, unknown> = {}) {
   return {

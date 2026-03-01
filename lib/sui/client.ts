@@ -1,5 +1,5 @@
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
-import { SUI_NETWORK } from "../constants";
+import { SUI_NETWORK } from "../constants.js";
 
 let client: SuiClient | null = null;
 

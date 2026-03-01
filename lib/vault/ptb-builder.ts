@@ -6,7 +6,7 @@ import {
   PACKAGE_ID,
   MODULE_NAME,
   CLOCK_OBJECT_ID,
-} from "../constants";
+} from "../constants.js";
 
 // ============================================================
 // Owner Operations

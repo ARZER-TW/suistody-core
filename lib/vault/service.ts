@@ -1,6 +1,6 @@
-import { getSuiClient } from "../sui/client";
-import { PACKAGE_ID, MODULE_NAME } from "../constants";
-import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent } from "./types";
+import { getSuiClient } from "../sui/client.js";
+import { PACKAGE_ID, MODULE_NAME } from "../constants.js";
+import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent } from "./types.js";
 
 const VAULT_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::Vault`;
 const AGENT_CAP_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::AgentCap`;

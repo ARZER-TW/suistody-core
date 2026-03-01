@@ -1,4 +1,4 @@
-import type { VaultData } from "../vault/types";
+import type { VaultData } from "../vault/types.js";
 
 export interface PolicyCheckResult {
   allowed: boolean;

@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock SuiClient before importing service
-vi.mock("../../sui/client", () => ({
+vi.mock("../../sui/client.js", () => ({
   getSuiClient: vi.fn(),
 }));
 
 // We test the internal helpers by importing them indirectly through the module.
 // Since unwrapFields and extractFields are not exported, we re-implement the
 // same logic in tests to validate the parsing behavior via getVault / getOwnedVaults.
-import { getVault, getOwnerCaps, getAgentCaps, getOwnedVaults, getVaultEvents } from "../service";
-import { getSuiClient } from "../../sui/client";
+import { getVault, getOwnerCaps, getAgentCaps, getOwnedVaults, getVaultEvents } from "../service.js";
+import { getSuiClient } from "../../sui/client.js";
 
 function makeMockClient(overrides: Record<string, unknown> = {}) {
   return {

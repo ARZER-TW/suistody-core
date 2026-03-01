@@ -7,7 +7,7 @@ import {
   buildCreateAgentCap,
   buildRevokeAgentCap,
   buildAgentWithdraw,
-} from "../ptb-builder";
+} from "../ptb-builder.js";
 
 // Valid Sui addresses for testing (64 hex chars after 0x)
 const ADDR_AGENT =

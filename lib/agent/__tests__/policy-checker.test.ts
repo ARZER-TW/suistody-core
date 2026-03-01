@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { checkPolicy } from "../policy-checker";
-import type { VaultData } from "../../vault/types";
+import { checkPolicy } from "../policy-checker.js";
+import type { VaultData } from "../../vault/types.js";
 
 function makeVault(overrides: Partial<VaultData> = {}): VaultData {
   return {
