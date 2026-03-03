@@ -1,6 +1,6 @@
 {
   "name": "suistody-core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Policy-based AI Agent custody SDK for Sui blockchain",
   "type": "module",
   "exports": {

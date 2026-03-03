@@ -1,6 +1,7 @@
 import { getSuiClient } from "../sui/client.js";
 import { PACKAGE_ID, MODULE_NAME } from "../constants.js";
-import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent } from "./types.js";
+import { withRetry } from "../utils/retry.js";
+import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent, PaginatedEvents } from "./types.js";
 
 const VAULT_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::Vault`;
 const AGENT_CAP_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::AgentCap`;
@@ -58,6 +59,7 @@ function parseVaultData(objectId: string, fields: Record<string, unknown>): Vaul
     totalSpent: BigInt(String(fields.total_spent ?? 0)),
     lastTxTime: Number(fields.last_tx_time ?? 0),
     txCount: Number(fields.tx_count ?? 0),
+    status: Number(fields.status ?? 0),
   };
 }
 
@@ -68,10 +70,12 @@ function parseVaultData(objectId: string, fields: Record<string, unknown>): Vaul
  */
 export async function getVault(vaultId: string): Promise<VaultData> {
   const client = getSuiClient();
-  const response = await client.getObject({
-    id: vaultId,
-    options: { showContent: true, showOwner: true },
-  });
+  const response = await withRetry(() =>
+    client.getObject({
+      id: vaultId,
+      options: { showContent: true, showOwner: true },
+    })
+  );
 
   if (!response.data?.content) {
     throw new Error(`Vault not found: ${vaultId}`);
@@ -91,12 +95,14 @@ export async function getOwnerCaps(ownerAddress: string): Promise<OwnerCapData[]
   let hasNext = true;
 
   while (hasNext) {
-    const page = await client.getOwnedObjects({
-      owner: ownerAddress,
-      filter: { StructType: OWNER_CAP_TYPE },
-      options: { showContent: true },
-      cursor,
-    });
+    const page = await withRetry(() =>
+      client.getOwnedObjects({
+        owner: ownerAddress,
+        filter: { StructType: OWNER_CAP_TYPE },
+        options: { showContent: true },
+        cursor,
+      })
+    );
 
     for (const item of page.data) {
       if (!item.data?.content) continue;
@@ -130,12 +136,14 @@ export async function getAgentCaps(agentAddress: string): Promise<AgentCapData[]
   let hasNext = true;
 
   while (hasNext) {
-    const page = await client.getOwnedObjects({
-      owner: agentAddress,
-      filter: { StructType: AGENT_CAP_TYPE },
-      options: { showContent: true },
-      cursor,
-    });
+    const page = await withRetry(() =>
+      client.getOwnedObjects({
+        owner: agentAddress,
+        filter: { StructType: AGENT_CAP_TYPE },
+        options: { showContent: true },
+        cursor,
+      })
+    );
 
     for (const item of page.data) {
       if (!item.data?.content) continue;
@@ -170,10 +178,12 @@ export async function getOwnedVaults(ownerAddress: string): Promise<VaultData[]>
   const vaultIds = ownerCaps.map((cap) => cap.vaultId);
 
   const client = getSuiClient();
-  const responses = await client.multiGetObjects({
-    ids: vaultIds,
-    options: { showContent: true, showOwner: true },
-  });
+  const responses = await withRetry(() =>
+    client.multiGetObjects({
+      ids: vaultIds,
+      options: { showContent: true, showOwner: true },
+    })
+  );
 
   const vaults: VaultData[] = [];
   for (const response of responses) {
@@ -187,18 +197,27 @@ export async function getOwnedVaults(ownerAddress: string): Promise<VaultData[]>
 
 /**
  * Fetch on-chain AgentWithdrawal events for a given Vault.
+ * Supports pagination via cursor and limit.
  */
-export async function getVaultEvents(vaultId: string): Promise<VaultEvent[]> {
+export async function getVaultEvents(
+  vaultId: string,
+  options?: { limit?: number; cursor?: string }
+): Promise<PaginatedEvents> {
   const client = getSuiClient();
-  const events = await client.queryEvents({
-    query: {
-      MoveEventType: `${PACKAGE_ID}::agent_vault::AgentWithdrawal`,
-    },
-    order: "descending",
-    limit: 50,
-  });
+  const limit = options?.limit ?? 50;
 
-  return events.data
+  const events = await withRetry(() =>
+    client.queryEvents({
+      query: {
+        MoveEventType: `${PACKAGE_ID}::agent_vault::AgentWithdrawal`,
+      },
+      order: "descending",
+      limit,
+      cursor: options?.cursor ? JSON.parse(options.cursor) : undefined,
+    })
+  );
+
+  const filtered = events.data
     .filter((e) => {
       const parsed = e.parsedJson as Record<string, unknown> | undefined;
       return parsed?.vault_id === vaultId;
@@ -215,4 +234,10 @@ export async function getVaultEvents(vaultId: string): Promise<VaultEvent[]> {
         timestamp: Number(p.timestamp),
       };
     });
+
+  return {
+    events: filtered,
+    nextCursor: events.nextCursor ? JSON.stringify(events.nextCursor) : null,
+    hasMore: events.hasNextPage,
+  };
 }

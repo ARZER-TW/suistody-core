@@ -15,6 +15,13 @@ export interface VaultData {
   totalSpent: bigint;
   lastTxTime: number;
   txCount: number;
+  status: number;
+}
+
+export interface PaginatedEvents {
+  events: VaultEvent[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface AgentCapData {

@@ -15,6 +15,13 @@ module agent_vault::agent_vault {
     const E_INSUFFICIENT_BALANCE: u64 = 6;
     const E_PER_TX_EXCEEDED: u64 = 7;
     const E_ZERO_AMOUNT: u64 = 8;
+    const E_VAULT_PAUSED: u64 = 9;
+    const E_INVALID_STATUS: u64 = 10;
+
+    // === Vault Status Constants ===
+    const STATUS_ACTIVE: u8 = 0;
+    const STATUS_PAUSED: u8 = 1;
+    const STATUS_LOCKED: u8 = 2;
 
     // === Structs ===
 
@@ -28,6 +35,7 @@ module agent_vault::agent_vault {
         total_spent: u64,
         last_tx_time: u64,
         tx_count: u64,
+        status: u8,
     }
 
     /// Policy: defines agent operation limits
@@ -39,8 +47,8 @@ module agent_vault::agent_vault {
         expires_at: u64,
     }
 
-    /// AgentCap: agent's permission token (transferable NFT)
-    public struct AgentCap has key, store {
+    /// AgentCap: agent's permission token (non-transferable, module-only transfer)
+    public struct AgentCap has key {
         id: UID,
         vault_id: ID,
     }
@@ -101,6 +109,20 @@ module agent_vault::agent_vault {
         amount: u64,
     }
 
+    public struct VaultPaused has copy, drop {
+        vault_id: ID,
+    }
+
+    public struct VaultUnpaused has copy, drop {
+        vault_id: ID,
+    }
+
+    public struct VaultStatusChanged has copy, drop {
+        vault_id: ID,
+        old_status: u8,
+        new_status: u8,
+    }
+
     // === Public Entry Functions ===
 
     /// Create a new Vault with initial deposit and policy
@@ -134,6 +156,7 @@ module agent_vault::agent_vault {
             total_spent: 0,
             last_tx_time: 0,
             tx_count: 0,
+            status: STATUS_ACTIVE,
         };
 
         let owner_cap = OwnerCap {
@@ -208,6 +231,42 @@ module agent_vault::agent_vault {
         vault.total_spent = 0;
         vault.tx_count = 0;
         vault.last_tx_time = 0;
+    }
+
+    /// Owner pauses the vault (blocks agent withdrawals)
+    public fun pause(
+        vault: &mut Vault,
+        owner_cap: &OwnerCap,
+    ) {
+        assert!(owner_cap.vault_id == object::id(vault), E_NOT_OWNER);
+        assert!(vault.status == STATUS_ACTIVE, E_INVALID_STATUS);
+        let old_status = vault.status;
+        vault.status = STATUS_PAUSED;
+
+        event::emit(VaultStatusChanged {
+            vault_id: object::id(vault),
+            old_status,
+            new_status: STATUS_PAUSED,
+        });
+        event::emit(VaultPaused { vault_id: object::id(vault) });
+    }
+
+    /// Owner unpauses the vault (re-enables agent withdrawals)
+    public fun unpause(
+        vault: &mut Vault,
+        owner_cap: &OwnerCap,
+    ) {
+        assert!(owner_cap.vault_id == object::id(vault), E_NOT_OWNER);
+        assert!(vault.status == STATUS_PAUSED, E_INVALID_STATUS);
+        let old_status = vault.status;
+        vault.status = STATUS_ACTIVE;
+
+        event::emit(VaultStatusChanged {
+            vault_id: object::id(vault),
+            old_status,
+            new_status: STATUS_ACTIVE,
+        });
+        event::emit(VaultUnpaused { vault_id: object::id(vault) });
     }
 
     /// Owner updates policy rules
@@ -304,29 +363,32 @@ module agent_vault::agent_vault {
         let (authorized, _) = vault.authorized_caps.index_of(&cap_id);
         assert!(authorized, E_INVALID_CAP);
 
+        // 3. Check vault is not paused
+        assert!(vault.status == STATUS_ACTIVE, E_VAULT_PAUSED);
+
         let now = clock.timestamp_ms();
 
-        // 3. Check expiry
+        // 4. Check expiry
         assert!(now < vault.policy.expires_at, E_EXPIRED);
 
-        // 4. Check cooldown (skip for first tx)
+        // 5. Check cooldown (skip for first tx)
         if (vault.tx_count > 0) {
             assert!(now - vault.last_tx_time >= vault.policy.cooldown_ms, E_COOLDOWN);
         };
 
-        // 5. Check per-tx limit
+        // 6. Check per-tx limit
         assert!(amount <= vault.policy.max_per_tx, E_PER_TX_EXCEEDED);
 
-        // 6. Check total budget (subtraction avoids overflow)
+        // 7. Check total budget (subtraction avoids overflow)
         assert!(amount <= vault.policy.max_budget - vault.total_spent, E_BUDGET_EXCEEDED);
 
-        // 7. Check action whitelist
+        // 8. Check action whitelist
         assert!(vault.policy.allowed_actions.contains(&action_type), E_NOT_WHITELISTED);
 
-        // 8. Check sufficient balance
+        // 9. Check sufficient balance
         assert!(vault.balance_sui.value() >= amount, E_INSUFFICIENT_BALANCE);
 
-        // 9. Update state
+        // 10. Update state
         vault.total_spent = vault.total_spent + amount;
         vault.last_tx_time = now;
         vault.tx_count = vault.tx_count + 1;
@@ -342,7 +404,7 @@ module agent_vault::agent_vault {
             timestamp: now,
         });
 
-        // 10. Extract and return funds
+        // 11. Extract and return funds
         coin::from_balance(vault.balance_sui.split(amount), ctx)
     }
 
@@ -378,6 +440,10 @@ module agent_vault::agent_vault {
 
     public fun get_policy_expires_at(vault: &Vault): u64 {
         vault.policy.expires_at
+    }
+
+    public fun get_status(vault: &Vault): u8 {
+        vault.status
     }
 
     public fun get_agent_cap_vault_id(cap: &AgentCap): ID {

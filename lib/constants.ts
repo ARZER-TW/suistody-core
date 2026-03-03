@@ -26,6 +26,17 @@ export const ACTION_STABLE_MINT = 1;
 export const ACTION_STABLE_BURN = 2;
 export const ACTION_STABLE_CLAIM = 3;
 
+// Vault status constants (matching Move contract)
+export const STATUS_ACTIVE = 0;
+export const STATUS_PAUSED = 1;
+export const STATUS_LOCKED = 2;
+
+export const STATUS_LABELS: Record<number, string> = {
+  0: "Active",
+  1: "Paused",
+  2: "Locked",
+};
+
 export const ACTION_LABELS: Record<number, string> = {
   0: "Swap",
   1: "Stable Mint",

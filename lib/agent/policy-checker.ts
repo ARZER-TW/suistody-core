@@ -1,4 +1,5 @@
 import type { VaultData } from "../vault/types.js";
+import { STATUS_ACTIVE, STATUS_LABELS } from "../constants.js";
 
 export interface PolicyCheckResult {
   allowed: boolean;
@@ -26,6 +27,12 @@ export function checkPolicy(params: {
 }): PolicyCheckResult {
   const { vault, actionType, nowMs, amount } = params;
   const { policy } = vault;
+
+  // 0. Vault status check
+  if (vault.status !== STATUS_ACTIVE) {
+    const label = STATUS_LABELS[vault.status] ?? `Unknown(${vault.status})`;
+    return { allowed: false, reason: `Vault is ${label}` };
+  }
 
   // 1. Expiry
   if (nowMs >= policy.expiresAt) {

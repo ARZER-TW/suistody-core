@@ -30,6 +30,10 @@ module agent_vault::agent_vault_tests {
     const ACTION_SWAP: u8 = 0;
     const ACTION_LIMIT_ORDER: u8 = 1;
 
+    // Vault status
+    const STATUS_ACTIVE: u8 = 0;
+    const STATUS_PAUSED: u8 = 1;
+
     // === Helper Functions ===
 
     fun setup_vault(scenario: &mut Scenario) {
@@ -729,6 +733,309 @@ module agent_vault::agent_vault_tests {
             clock::destroy_for_testing(clock);
             ts::return_shared(vault);
             ts::return_to_sender(&scenario, agent_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: pause vault ===
+
+    #[test]
+    fun test_pause_vault() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            assert!(agent_vault::get_status(&vault) == STATUS_ACTIVE);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+
+            assert!(agent_vault::get_status(&vault) == STATUS_PAUSED);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: unpause vault ===
+
+    #[test]
+    fun test_unpause_vault() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        // Pause first
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+            assert!(agent_vault::get_status(&vault) == STATUS_PAUSED);
+
+            agent_vault::unpause(&mut vault, &owner_cap);
+            assert!(agent_vault::get_status(&vault) == STATUS_ACTIVE);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: agent withdraw blocked when paused ===
+
+    #[test]
+    #[expected_failure(abort_code = 9, location = agent_vault)]
+    fun test_agent_withdraw_when_paused() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault_with_agent(&mut scenario);
+
+        // Owner pauses vault
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        // Agent tries to withdraw from paused vault
+        ts::next_tx(&mut scenario, AGENT);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let agent_cap = ts::take_from_sender<AgentCap>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+
+            let coin = agent_vault::agent_withdraw(
+                &mut vault,
+                &agent_cap,
+                HALF_SUI,
+                ACTION_SWAP,
+                &clock,
+                ts::ctx(&mut scenario),
+            );
+
+            test_utils::destroy(coin);
+            clock::destroy_for_testing(clock);
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, agent_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: owner withdraw_all works when paused ===
+
+    #[test]
+    fun test_owner_withdraw_all_when_paused() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        // Pause vault
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        // Owner can still withdraw all
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            let coin = agent_vault::withdraw_all(
+                &mut vault,
+                &owner_cap,
+                ts::ctx(&mut scenario),
+            );
+
+            assert!(coin::value(&coin) == TEN_SUI);
+            assert!(agent_vault::get_balance(&vault) == 0);
+
+            test_utils::destroy(coin);
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: cannot pause already paused vault ===
+
+    #[test]
+    #[expected_failure(abort_code = 10, location = agent_vault)]
+    fun test_cannot_double_pause() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+            agent_vault::pause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: cannot unpause active vault ===
+
+    #[test]
+    #[expected_failure(abort_code = 10, location = agent_vault)]
+    fun test_cannot_unpause_active() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::unpause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: agent withdraw works after unpause ===
+
+    #[test]
+    fun test_agent_withdraw_after_unpause() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault_with_agent(&mut scenario);
+
+        // Pause
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::pause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        // Unpause
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+
+            agent_vault::unpause(&mut vault, &owner_cap);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        // Agent can withdraw again
+        ts::next_tx(&mut scenario, AGENT);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let agent_cap = ts::take_from_sender<AgentCap>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+
+            let coin = agent_vault::agent_withdraw(
+                &mut vault,
+                &agent_cap,
+                HALF_SUI,
+                ACTION_SWAP,
+                &clock,
+                ts::ctx(&mut scenario),
+            );
+
+            assert!(coin::value(&coin) == HALF_SUI);
+
+            test_utils::destroy(coin);
+            clock::destroy_for_testing(clock);
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, agent_cap);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: vault starts with active status ===
+
+    #[test]
+    fun test_vault_starts_active() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let vault = ts::take_shared<Vault>(&scenario);
+
+            assert!(agent_vault::get_status(&vault) == STATUS_ACTIVE);
+
+            ts::return_shared(vault);
+        };
+
+        ts::end(scenario);
+    }
+
+    // === Test: owner deposit works when paused ===
+
+    #[test]
+    fun test_owner_deposit_when_paused() {
+        let mut scenario = ts::begin(OWNER);
+
+        setup_vault(&mut scenario);
+
+        // Pause
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+            agent_vault::pause(&mut vault, &owner_cap);
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
+        };
+
+        // Deposit still works
+        ts::next_tx(&mut scenario, OWNER);
+        {
+            let mut vault = ts::take_shared<Vault>(&scenario);
+            let owner_cap = ts::take_from_sender<OwnerCap>(&scenario);
+            let coin = coin::mint_for_testing<SUI>(ONE_SUI, ts::ctx(&mut scenario));
+
+            agent_vault::deposit(&mut vault, &owner_cap, coin);
+            assert!(agent_vault::get_balance(&vault) == TEN_SUI + ONE_SUI);
+
+            ts::return_shared(vault);
+            ts::return_to_sender(&scenario, owner_cap);
         };
 
         ts::end(scenario);

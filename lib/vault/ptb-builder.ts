@@ -124,6 +124,76 @@ export function buildCreateAgentCap(params: {
 }
 
 /**
+ * Build PTB for owner to pause the vault (blocks agent withdrawals).
+ */
+export function buildPause(params: {
+  vaultId: string;
+  ownerCapId: string;
+}): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${PACKAGE_ID}::${MODULE_NAME}::pause`,
+    arguments: [
+      tx.object(params.vaultId),
+      tx.object(params.ownerCapId),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build PTB for owner to unpause the vault (re-enables agent withdrawals).
+ */
+export function buildUnpause(params: {
+  vaultId: string;
+  ownerCapId: string;
+}): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${PACKAGE_ID}::${MODULE_NAME}::unpause`,
+    arguments: [
+      tx.object(params.vaultId),
+      tx.object(params.ownerCapId),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build PTB for owner to update vault policy.
+ */
+export function buildUpdatePolicy(params: {
+  vaultId: string;
+  ownerCapId: string;
+  maxBudget: bigint;
+  maxPerTx: bigint;
+  allowedActions: number[];
+  cooldownMs: bigint;
+  expiresAt: bigint;
+}): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${PACKAGE_ID}::${MODULE_NAME}::update_policy`,
+    arguments: [
+      tx.object(params.vaultId),
+      tx.object(params.ownerCapId),
+      tx.pure.u64(params.maxBudget),
+      tx.pure.u64(params.maxPerTx),
+      tx.pure.vector("u8", params.allowedActions),
+      tx.pure.u64(params.cooldownMs),
+      tx.pure.u64(params.expiresAt),
+    ],
+  });
+
+  return tx;
+}
+
+/**
  * Build PTB to revoke an AgentCap.
  */
 export function buildRevokeAgentCap(params: {

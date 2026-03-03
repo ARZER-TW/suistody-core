@@ -428,21 +428,25 @@ describe("getVaultEvents", () => {
             },
           },
         ],
+        hasNextPage: false,
+        nextCursor: null,
       }),
     });
     vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
 
-    const events = await getVaultEvents("0xvault_target");
-    expect(events).toHaveLength(1);
-    expect(events[0].txDigest).toBe("tx1");
-    expect(events[0].amount).toBe(500_000_000n);
-    expect(events[0].totalSpent).toBe(500_000_000n);
-    expect(events[0].remainingBudget).toBe(4_500_000_000n);
-    expect(events[0].txCount).toBe(1);
-    expect(events[0].timestamp).toBe(1700000000000);
+    const result = await getVaultEvents("0xvault_target");
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].txDigest).toBe("tx1");
+    expect(result.events[0].amount).toBe(500_000_000n);
+    expect(result.events[0].totalSpent).toBe(500_000_000n);
+    expect(result.events[0].remainingBudget).toBe(4_500_000_000n);
+    expect(result.events[0].txCount).toBe(1);
+    expect(result.events[0].timestamp).toBe(1700000000000);
+    expect(result.nextCursor).toBeNull();
+    expect(result.hasMore).toBe(false);
   });
 
-  it("returns empty array when no matching events", async () => {
+  it("returns empty events when no matching events", async () => {
     const mockClient = makeMockClient({
       queryEvents: vi.fn().mockResolvedValue({
         data: [
@@ -459,22 +463,30 @@ describe("getVaultEvents", () => {
             },
           },
         ],
+        hasNextPage: false,
+        nextCursor: null,
       }),
     });
     vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
 
-    const events = await getVaultEvents("0xno_match");
-    expect(events).toEqual([]);
+    const result = await getVaultEvents("0xno_match");
+    expect(result.events).toEqual([]);
+    expect(result.hasMore).toBe(false);
   });
 
-  it("returns empty array when queryEvents returns no data", async () => {
+  it("returns empty events when queryEvents returns no data", async () => {
     const mockClient = makeMockClient({
-      queryEvents: vi.fn().mockResolvedValue({ data: [] }),
+      queryEvents: vi.fn().mockResolvedValue({
+        data: [],
+        hasNextPage: false,
+        nextCursor: null,
+      }),
     });
     vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
 
-    const events = await getVaultEvents("0xvault");
-    expect(events).toEqual([]);
+    const result = await getVaultEvents("0xvault");
+    expect(result.events).toEqual([]);
+    expect(result.nextCursor).toBeNull();
   });
 
   it("maps parsedJson fields correctly to VaultEvent", async () => {
@@ -494,13 +506,15 @@ describe("getVaultEvents", () => {
             },
           },
         ],
+        hasNextPage: false,
+        nextCursor: null,
       }),
     });
     vi.mocked(getSuiClient).mockReturnValue(mockClient as never);
 
-    const events = await getVaultEvents("0xmy_vault");
-    expect(events).toHaveLength(1);
-    expect(events[0]).toEqual({
+    const result = await getVaultEvents("0xmy_vault");
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]).toEqual({
       txDigest: "digest_abc",
       amount: 1_000_000_000n,
       actionType: 2,
