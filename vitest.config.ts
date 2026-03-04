@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     env: {
-      PACKAGE_ID: "0xf01673d606536731ca79fe85324026cdf9c7b2471bbf61a29b03ce911fe5c7d1",
+      PACKAGE_ID: "0x2475f6cb526ee358db80fa3addc01647f4f016e537a4edbeb8cb24a07364a49e",
       SUI_NETWORK: "testnet",
     },
   },
