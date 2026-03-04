@@ -6,11 +6,11 @@ https://github.com/ARZER-TW/suistody-core
 
 ## Project Overview
 
-Pure TypeScript SDK (v0.3.0) + Move smart contracts for policy-based AI Agent custody on Sui blockchain. Extracted from the full-stack agent-vault hackathon project -- no frontend, no LLM client, no zkLogin.
+Pure TypeScript SDK (v0.4.0) + Move smart contracts for policy-based AI Agent custody on Sui blockchain. Extracted from the full-stack agent-vault hackathon project -- no frontend, no LLM client, no zkLogin.
 
-- SDK: v0.3.0, 993 lines across 11 source files
-- Package: suistody-core
-- Plugin: v0.2.0, 14 tools
+- SDK: v0.4.0, 1613 lines across 13 source files
+- Package: @suistody/core
+- Plugin: v0.2.0, 17 tools
 - Move contract: 456 lines, 22 public functions, 11 error constants, 24 tests
 
 ## Project Structure
@@ -20,20 +20,25 @@ contracts/              # Sui Move smart contracts
   sources/agent_vault.move
   sources/agent_vault_tests.move
 
-lib/                    # TypeScript SDK (11 source files, 993 lines)
-  index.ts              # Public API entry point (25+ exports)
-  constants.ts          # PACKAGE_ID, ACTION_*, STATUS_*, suiToMist/mistToSui
+lib/                    # TypeScript SDK (13 source files, 1613 lines)
+  index.ts              # Public API barrel (42+ exports)
+  config.ts             # Lazy config: initSuistody() for browser, process.env for Node.js
+  constants.ts          # MODULE_NAME, CLOCK_OBJECT_ID, ACTION_*, STATUS_*, suiToMist/mistToSui, token types
   vault/
     types.ts            # VaultData (with status), Policy, AgentCapData, OwnerCapData, VaultEvent, PaginatedEvents
-    service.ts          # getVault, getOwnerCaps, getAgentCaps, getOwnedVaults, getVaultEvents (paginated)
+    service.ts          # getVault, getOwnerCaps, getAgentCaps, getOwnedVaults, getVaultEvents (paginated, retry)
     ptb-builder.ts      # 9 PTB builders: createVault, deposit, withdrawAll, createAgentCap, revokeAgentCap, agentWithdraw, pause, unpause, updatePolicy
   sui/
-    client.ts           # SuiClient singleton
+    client.ts           # SuiClient singleton (lazy init from config)
   agent/
     policy-checker.ts   # checkPolicy (off-chain, checks status + all policy rules)
   auth/
     sponsored-tx.ts     # executeAgentTransaction, executeSponsoredAgentTransaction
     multisig.ts         # deriveMultiSigAddress, buildMultiSigTransaction
+  defi/
+    oracle.ts           # Pyth Hermes HTTP API (getSuiUsdPrice, getTokenPrice, FEED_IDS)
+    swap.ts             # Cetus CLMM swap (getSwapQuote, buildAgentSwap -- PTB composition)
+    pool-discovery.ts   # findPool (Cetus API + hardcoded fallback)
   utils/
     retry.ts            # withRetry (exponential backoff, 3 retries, 1s-10s)
     dry-run.ts          # dryRunTransaction (DryRunResult: ok/fail + gas estimate)
@@ -41,6 +46,9 @@ lib/                    # TypeScript SDK (11 source files, 993 lines)
     constants.test.ts
   agent/__tests__/
     policy-checker.test.ts
+  defi/__tests__/
+    oracle.test.ts
+    swap.test.ts
   vault/__tests__/
     ptb-builder.test.ts
     service.test.ts
@@ -168,9 +176,23 @@ const ACTION_STABLE_CLAIM = 3;
 - `deriveMultiSigAddress` -- Derive multi-sig address from public keys
 - `buildMultiSigTransaction` -- Build transaction requiring multiple signatures
 
+### DeFi Module (zero external SDK deps)
+- **Oracle** (`defi/oracle.ts`): Pyth Hermes HTTP API -- `getSuiUsdPrice`, `getTokenPrice`, `FEED_IDS`
+  - Mainnet: `hermes.pyth.network`, Testnet: `hermes-beta.pyth.network`
+  - Per-network feed IDs (SUI/USD differs between mainnet/testnet)
+- **Swap** (`defi/swap.ts`): Cetus CLMM via raw moveCall -- `getSwapQuote`, `buildAgentSwap`
+  - PTB composition: agent_withdraw -> CLMM swap -> transfer (single transaction)
+  - Token types: USDC addresses differ between mainnet/testnet
+- **Pool Discovery** (`defi/pool-discovery.ts`): `findPool` via Cetus REST API + hardcoded fallback
+
 ### Utilities
 - `withRetry` -- Exponential backoff (3 retries, 1s-10s)
 - `dryRunTransaction` -- Returns `DryRunResult` (ok/fail + gas estimate)
+
+### Configuration
+- `initSuistody({ packageId, network })` -- Browser-safe initialization (no process.env)
+- `getPackageId()` / `getNetwork()` -- Lazy getters
+- Auto-detect from `process.env` in Node.js (backward compatible)
 
 ## Restrictions
 

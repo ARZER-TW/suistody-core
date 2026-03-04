@@ -1,11 +1,17 @@
 import { getSuiClient } from "../sui/client.js";
-import { PACKAGE_ID, MODULE_NAME } from "../constants.js";
+import { getPackageId, MODULE_NAME } from "../constants.js";
 import { withRetry } from "../utils/retry.js";
 import type { VaultData, AgentCapData, OwnerCapData, Policy, VaultEvent, PaginatedEvents } from "./types.js";
 
-const VAULT_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::Vault`;
-const AGENT_CAP_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::AgentCap`;
-const OWNER_CAP_TYPE = `${PACKAGE_ID}::${MODULE_NAME}::OwnerCap`;
+function vaultType(): string {
+  return `${getPackageId()}::${MODULE_NAME}::Vault`;
+}
+function agentCapType(): string {
+  return `${getPackageId()}::${MODULE_NAME}::AgentCap`;
+}
+function ownerCapType(): string {
+  return `${getPackageId()}::${MODULE_NAME}::OwnerCap`;
+}
 
 // -- Field extraction helpers --
 
@@ -98,7 +104,7 @@ export async function getOwnerCaps(ownerAddress: string): Promise<OwnerCapData[]
     const page = await withRetry(() =>
       client.getOwnedObjects({
         owner: ownerAddress,
-        filter: { StructType: OWNER_CAP_TYPE },
+        filter: { StructType: ownerCapType() },
         options: { showContent: true },
         cursor,
       })
@@ -139,7 +145,7 @@ export async function getAgentCaps(agentAddress: string): Promise<AgentCapData[]
     const page = await withRetry(() =>
       client.getOwnedObjects({
         owner: agentAddress,
-        filter: { StructType: AGENT_CAP_TYPE },
+        filter: { StructType: agentCapType() },
         options: { showContent: true },
         cursor,
       })
@@ -209,7 +215,7 @@ export async function getVaultEvents(
   const events = await withRetry(() =>
     client.queryEvents({
       query: {
-        MoveEventType: `${PACKAGE_ID}::agent_vault::AgentWithdrawal`,
+        MoveEventType: `${getPackageId()}::agent_vault::AgentWithdrawal`,
       },
       order: "descending",
       limit,

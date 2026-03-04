@@ -1,11 +1,24 @@
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
-import { SUI_NETWORK } from "../constants.js";
+import { getNetwork } from "../constants.js";
 
 let client: SuiClient | null = null;
 
-export function getSuiClient(): SuiClient {
+/**
+ * Get a SuiClient singleton. Uses network from config (lazy).
+ * Can also accept an injected client for browser / dapp-kit integration.
+ */
+export function getSuiClient(injected?: SuiClient): SuiClient {
+  if (injected) {
+    client = injected;
+    return client;
+  }
   if (!client) {
-    client = new SuiClient({ url: getFullnodeUrl(SUI_NETWORK) });
+    client = new SuiClient({ url: getFullnodeUrl(getNetwork()) });
   }
   return client;
+}
+
+// Test helper
+export function _resetClient(): void {
+  client = null;
 }

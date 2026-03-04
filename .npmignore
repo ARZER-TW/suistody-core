@@ -1,0 +1,10 @@
+lib/
+contracts/
+docs/
+.env
+.env.*
+*.test.ts
+__tests__/
+vitest.config.ts
+tsconfig.json
+.github/

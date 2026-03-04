@@ -1,24 +1,24 @@
-// Contract addresses
-const _packageId = process.env.PACKAGE_ID;
-if (!_packageId) {
-  throw new Error("PACKAGE_ID environment variable is required");
+// Lazy constants -- defers config read until first access (browser-safe)
+import { getConfig } from "./config.js";
+import type { SuiNetwork } from "./config.js";
+
+// ---------- Config-dependent getters (lazy, browser-safe) ----------
+
+export function getPackageId(): string {
+  return getConfig().packageId;
 }
-export const PACKAGE_ID: string = _packageId;
+
+export function getNetwork(): SuiNetwork {
+  return getConfig().network;
+}
+
+// Backward-compat: re-export config type
+export type { SuiNetwork };
+
+// ---------- Static constants (no config dependency) ----------
 
 export const MODULE_NAME = "agent_vault";
-
-// Sui system objects
 export const CLOCK_OBJECT_ID = "0x6";
-
-// Network
-const VALID_NETWORKS = ["testnet", "devnet", "mainnet"] as const;
-type SuiNetwork = (typeof VALID_NETWORKS)[number];
-
-const _network = (process.env.SUI_NETWORK ?? "testnet").trim();
-if (!VALID_NETWORKS.includes(_network as SuiNetwork)) {
-  throw new Error(`Invalid SUI_NETWORK: "${_network}". Must be one of: ${VALID_NETWORKS.join(", ")}`);
-}
-export const SUI_NETWORK: SuiNetwork = _network as SuiNetwork;
 
 // Action types (matching Move contract allowed_actions u8 values)
 export const ACTION_SWAP = 0;
@@ -55,12 +55,11 @@ const USDC_TYPES: Record<string, string> = {
 };
 
 export function getUsdcType(): string {
-  return USDC_TYPES[SUI_NETWORK] ?? USDC_TYPES.testnet;
+  return USDC_TYPES[getNetwork()] ?? USDC_TYPES.testnet;
 }
 
 // Unit conversion -- pure bigint arithmetic, no floating-point
 export function suiToMist(sui: number): bigint {
-  // Handle scientific notation (e.g. 1e-10) by using toFixed
   const str = sui.toFixed(9);
   const dotIndex = str.indexOf(".");
 

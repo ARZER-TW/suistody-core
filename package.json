@@ -1,8 +1,23 @@
 {
-  "name": "suistody-core",
-  "version": "0.3.0",
+  "name": "@suistody/core",
+  "version": "0.4.0",
   "description": "Policy-based AI Agent custody SDK for Sui blockchain",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OpenClaw/suistody-core.git"
+  },
+  "keywords": [
+    "sui",
+    "blockchain",
+    "custody",
+    "ai-agent",
+    "vault",
+    "defi",
+    "pyth",
+    "oracle"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -11,11 +26,20 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@mysten/sui": "^1.44.0"

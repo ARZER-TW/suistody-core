@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { suiToMist, mistToSui, getUsdcType, SUI_NETWORK } from "../constants.js";
+import { describe, it, expect, beforeEach } from "vitest";
+import { suiToMist, mistToSui, getUsdcType, getPackageId, getNetwork } from "../constants.js";
+import { _resetConfig } from "../config.js";
 
 describe("suiToMist", () => {
   it("converts 1 SUI to 1_000_000_000 MIST", () => {
@@ -20,7 +21,6 @@ describe("suiToMist", () => {
   });
 
   it("floors fractional MIST (sub-MIST precision)", () => {
-    // 0.0000000001 SUI = 0.1 MIST -> floors to 0
     expect(suiToMist(0.0000000001)).toBe(0n);
   });
 
@@ -48,13 +48,27 @@ describe("mistToSui", () => {
   });
 
   it("handles very large BigInt values", () => {
-    // 10 billion SUI in MIST
     const largeMist = 10_000_000_000_000_000_000n;
     expect(mistToSui(largeMist)).toBe(10_000_000_000);
   });
 
   it("handles 1 MIST (smallest unit)", () => {
     expect(mistToSui(1n)).toBe(1e-9);
+  });
+});
+
+describe("lazy config getters", () => {
+  beforeEach(() => _resetConfig());
+
+  it("getPackageId returns value from env", () => {
+    // vitest.config.ts sets PACKAGE_ID env var
+    const pkg = getPackageId();
+    expect(pkg).toBeTruthy();
+    expect(pkg.startsWith("0x")).toBe(true);
+  });
+
+  it("getNetwork returns testnet from env", () => {
+    expect(getNetwork()).toBe("testnet");
   });
 });
 
@@ -65,8 +79,7 @@ describe("getUsdcType", () => {
   });
 
   it("returns testnet USDC type when network is testnet", () => {
-    // SUI_NETWORK is set to testnet in vitest.config.ts
-    expect(SUI_NETWORK).toBe("testnet");
+    expect(getNetwork()).toBe("testnet");
     const usdcType = getUsdcType();
     expect(usdcType).toContain("0x14a71d857b34677a7d57e0feb303df1adb515a37780645ab763d42ce8d1a5e48");
   });

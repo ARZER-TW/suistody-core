@@ -4,9 +4,9 @@ Policy-based AI Agent custody SDK for Sui blockchain.
 
 Suistody Core provides a TypeScript SDK and Move smart contracts for managing on-chain Vaults with configurable spending policies. AI Agents can autonomously withdraw funds within owner-defined constraints (budget limits, per-tx caps, action whitelists, cooldowns, expiry). Owners can pause/unpause vaults to temporarily restrict agent access.
 
-- **SDK**: v0.3.0 -- 993 lines across 11 source files
-- **Package**: suistody-core
-- **Plugin**: v0.2.0 -- 14 tools
+- **SDK**: v0.4.0 -- 1613 lines across 13 source files
+- **Package**: @suistody/core
+- **Plugin**: v0.2.0 -- 17 tools
 - **Move Contract**: 456 lines, 22 public functions, 24 tests
 
 ## Install
@@ -195,6 +195,62 @@ const multiSigTx = buildMultiSigTransaction({
   publicKeys: [pk1, pk2, pk3],
   threshold: 2,
 })
+```
+
+### DeFi Module
+
+Zero external DeFi SDK dependencies -- uses Pyth Hermes HTTP API and Cetus raw moveCall directly.
+
+#### Price Oracle (Pyth)
+
+```typescript
+import { getSuiUsdPrice, getTokenPrice, FEED_IDS } from './lib'
+
+// Get current SUI/USD price
+const suiPrice = await getSuiUsdPrice()
+// suiPrice.price = 1.23, suiPrice.confidence = 0.01
+
+// Get any supported token price by feed ID
+const btcPrice = await getTokenPrice(FEED_IDS.BTC_USD)
+```
+
+#### Token Swap (Cetus CLMM)
+
+```typescript
+import { getSwapQuote, buildAgentSwap } from './lib'
+
+// Get a swap quote (SUI -> USDC)
+const quote = await getSwapQuote({
+  amountIn: 1_000_000_000n, // 1 SUI
+  tokenIn: 'SUI',
+  tokenOut: 'USDC',
+})
+// quote.estimatedAmountOut, quote.priceImpact
+
+// Build agent swap transaction (withdraw + swap + transfer in single PTB)
+const swapTx = buildAgentSwap({
+  vaultId: '0xvault_id',
+  agentCapId: '0xcap_id',
+  amountIn: 1_000_000_000n,
+  tokenOut: 'USDC',
+  minAmountOut: quote.estimatedAmountOut,
+  recipientAddress: '0xrecipient',
+})
+```
+
+### Configuration
+
+```typescript
+import { initSuistody, getPackageId, getNetwork } from './lib'
+
+// Browser: explicit initialization (no process.env access)
+initSuistody({
+  packageId: '0x...',
+  network: 'testnet',
+})
+
+// Node.js: auto-detects from process.env (PACKAGE_ID, SUI_NETWORK)
+// No initialization needed
 ```
 
 ### Retry and Dry-Run Utilities

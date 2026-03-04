@@ -3,7 +3,7 @@
  */
 import { Transaction } from "@mysten/sui/transactions";
 import {
-  PACKAGE_ID,
+  getPackageId,
   MODULE_NAME,
   CLOCK_OBJECT_ID,
 } from "../constants.js";
@@ -36,7 +36,7 @@ export function buildCreateVault(params: {
   ]);
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::create_vault`,
+    target: `${getPackageId()}::${MODULE_NAME}::create_vault`,
     arguments: [
       depositCoin,
       tx.pure.u64(params.maxBudget),
@@ -67,7 +67,7 @@ export function buildDepositFromGas(params: {
   ]);
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::deposit`,
+    target: `${getPackageId()}::${MODULE_NAME}::deposit`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -89,7 +89,7 @@ export function buildWithdrawAll(params: {
   const tx = new Transaction();
 
   const coin = tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::withdraw_all`,
+    target: `${getPackageId()}::${MODULE_NAME}::withdraw_all`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -112,7 +112,7 @@ export function buildCreateAgentCap(params: {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::create_agent_cap`,
+    target: `${getPackageId()}::${MODULE_NAME}::create_agent_cap`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -133,7 +133,7 @@ export function buildPause(params: {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::pause`,
+    target: `${getPackageId()}::${MODULE_NAME}::pause`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -153,7 +153,7 @@ export function buildUnpause(params: {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::unpause`,
+    target: `${getPackageId()}::${MODULE_NAME}::unpause`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -178,7 +178,7 @@ export function buildUpdatePolicy(params: {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::update_policy`,
+    target: `${getPackageId()}::${MODULE_NAME}::update_policy`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -204,7 +204,7 @@ export function buildRevokeAgentCap(params: {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::revoke_agent_cap`,
+    target: `${getPackageId()}::${MODULE_NAME}::revoke_agent_cap`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.ownerCapId),
@@ -232,7 +232,7 @@ export function buildAgentWithdraw(params: {
   const tx = new Transaction();
 
   const coin = tx.moveCall({
-    target: `${PACKAGE_ID}::${MODULE_NAME}::agent_withdraw`,
+    target: `${getPackageId()}::${MODULE_NAME}::agent_withdraw`,
     arguments: [
       tx.object(params.vaultId),
       tx.object(params.agentCapId),
